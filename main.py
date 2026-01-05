@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+import json
+import os
 from ultralytics import YOLO
 
 model = YOLO('yolov8n.pt')
@@ -9,11 +11,34 @@ KNOWN_DISTANCE = 35.0
 KNOWN_PHONE_WIDTH = 7.53
 KNOWN_PHONE_HEIGHT = 16.25
 BBOX_CORRECTION_FACTOR = 0.92
+CALIBRATION_FILE = "calibration_data.json"
 
-focal_length = None
 calibration_samples = []
 measurement_history = []
 MAX_HISTORY = 5
+
+def save_calibration(focal_len):
+    """Save calibration data to file"""
+    data = {"focal_length": focal_len}
+    with open(CALIBRATION_FILE, 'w') as f:
+        json.dump(data, f)
+    print(f"Calibration saved to {CALIBRATION_FILE}")
+
+def load_calibration():
+    """Load calibration data from file if exists"""
+    if os.path.exists(CALIBRATION_FILE):
+        try:
+            with open(CALIBRATION_FILE, 'r') as f:
+                data = json.load(f)
+            print(f"Loaded calibration from {CALIBRATION_FILE}: focal_length = {data['focal_length']:.2f}px")
+            return data.get("focal_length")
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Error loading calibration file: {e}")
+            return None
+    return None
+
+# Load existing calibration or set to None
+focal_length = load_calibration()
 
 def calculate_focal_length(measured_distance, real_width, width_in_pixels):
     return (width_in_pixels * measured_distance) / real_width
@@ -29,8 +54,12 @@ def calculate_dimension(distance, pixel_size, focal_length):
     return (pixel_size * distance) / focal_length
 
 print("=== Phone Dimension Estimator ===")
-print("1. Hold phone at 35cm and press 'c' to calibrate (5 times)")
-print("2. Press 'q' to quit | 'r' to reset\n")
+if focal_length:
+    print(f"Using saved calibration (focal_length: {focal_length:.2f}px)")
+    print("Press 'r' to recalibrate if needed")
+else:
+    print("1. Hold phone at 35cm and press 'c' to calibrate (5 times)")
+print("2. Press 'q' to quit | 'r' to reset calibration\n")
 
 while True:
     ret, frame = cap.read()
@@ -117,13 +146,17 @@ while True:
                     
                     if len(calibration_samples) >= 5:
                         focal_length = np.mean(calibration_samples)
+                        save_calibration(focal_length)
                         print(f"Calibration complete! Focal length: {focal_length:.2f}px\n")
                     break
     elif key == ord('r'):
         focal_length = None
         calibration_samples = []
         measurement_history = []
-        print("Reset")
+        if os.path.exists(CALIBRATION_FILE):
+            os.remove(CALIBRATION_FILE)
+            print("Calibration file deleted")
+        print("Reset - Ready for new calibration")
 
 cap.release()
 cv2.destroyAllWindows()
