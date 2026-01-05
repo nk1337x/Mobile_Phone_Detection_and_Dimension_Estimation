@@ -8,6 +8,7 @@ Real-time mobile phone detection and dimension estimation using YOLOv8 and camer
 - Measures phone dimensions (width and height) in cm
 - Estimates distance from camera
 - Camera calibration for accurate measurements
+- **Persistent calibration** - calibrate once, reuse across sessions
 
 ## Requirements
 
@@ -22,14 +23,15 @@ pip install opencv-python numpy ultralytics
    python main.py
    ```
 
-2. Hold phone at 35cm and press `c` five times to calibrate
+2. **First time only**: Hold phone at 35cm and press `c` five times to calibrate
+   - Calibration is saved to `calibration_data.json` and loaded automatically on next run
 
 3. View real-time measurements
 
 ## Controls
 
-- `c` - Calibrate (at 35cm distance)
-- `r` - Reset calibration
+- `c` - Calibrate (at 35cm distance, only needed once)
+- `r` - Reset calibration (deletes saved calibration file)
 - `q` - Quit
 
 ## How It Works
